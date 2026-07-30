@@ -1,0 +1,39 @@
+{
+  "fileName": "Phoenix6-26.1.2.json",
+  "name": "CTRE-Phoenix (v6)",
+  "version": "26.1.2",
+  "frcYear": "2026",
+  "uuid": "e995de00-2c64-4df5-8831-c1441420ff19",
+  "mavenUrls": ["https://maven.ctr-electronics.com/release/"],
+  "javaDependencies": [{
+    "groupId": "com.ctre.phoenix6", "artifactId": "wpiapi-java", "version": "26.1.2"
+  }],
+  "jniDependencies": [
+    {
+      "groupId": "com.ctre.phoenix6", "artifactId": "api-cpp", "version": "26.1.2",
+      "isJar": false, "skipInvalidPlatforms": true,
+      "validPlatforms": ["windowsx86-64", "linuxx86-64", "linuxarm64", "linuxathena"], "simMode": "hwsim"
+    },
+    {
+      "groupId": "com.ctre.phoenix6", "artifactId": "tools", "version": "26.1.2",
+      "isJar": false, "skipInvalidPlatforms": true,
+      "validPlatforms": ["windowsx86-64", "linuxx86-64", "linuxarm64", "linuxathena"], "simMode": "hwsim"
+    },
+    {
+      "groupId": "com.ctre.phoenix6.sim", "artifactId": "api-cpp-sim", "version": "26.1.2",
+      "isJar": false, "skipInvalidPlatforms": true,
+      "validPlatforms": ["windowsx86-64", "linuxx86-64", "linuxarm64", "osxuniversal"], "simMode": "swsim"
+    },
+    {
+      "groupId": "com.ctre.phoenix6.sim", "artifactId": "tools-sim", "version": "26.1.2",
+      "isJar": false, "skipInvalidPlatforms": true,
+      "validPlatforms": ["windowsx86-64", "linuxx86-64", "linuxarm64", "osxuniversal"], "simMode": "swsim"
+    }
+    ,{
+      "groupId": "com.ctre.phoenix6.sim", "artifactId": "simProTalonFX", "version": "26.1.2",
+      "isJar": false, "skipInvalidPlatforms": true,
+      "validPlatforms": ["windowsx86-64", "linuxx86-64", "linuxarm64", "osxuniversal"], "simMode": "swsim"
+    }
+  ],
+  "cppDependencies": []
+}
