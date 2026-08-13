@@ -21,3 +21,22 @@ forward/left/right presets; hold Left/Right Arrow for continuous counterclockwis
 manual rotation; or hold WASD to move the red target block. While WASD is active, the turret
 continuously points at that block. The controller bindings are Y (forward), left bumper (left),
 and right bumper (right).
+
+## Turret system identification
+
+The dashboard autonomous chooser includes `Turret SysId (full sequence)`. This is deliberately not
+the default. Before selecting it, put the real robot on blocks, start the turret near forward, clear
+the full turret travel, verify that positive voltage increases the reported turret angle, and keep
+an operator ready to disable.
+The routine applies a 0.5 V/s quasistatic ramp and a 4 V dynamic step in both directions. Each test
+has an 8 second timeout and stops 20 degrees before the configured cable limits.
+
+After the four tests finish, open the AdvantageKit `.wpilog` in AdvantageScope and export a WPILOG
+using `AdvantageKit Cycles` timestamps. Load that export in the WPILib SysId analyzer as a Simple
+mechanism with radians, using the turret SysId state, applied-voltage, angle, and velocity channels.
+Copy the fitted radians-based `kV` and `kA` into
+`CHARACTERIZED_KV_VOLTS_PER_RADIAN_PER_SECOND` and
+`CHARACTERIZED_KA_VOLTS_PER_RADIAN_PER_SECOND_SQUARED` in `Constants.Turret`. On the next build and
+deploy, the code builds the position/velocity plant and LQR from those measured constants instead
+of the estimated mass and ring inertia. `kS` is useful for a separate friction feedforward but does
+not change the linear LQR plant.

@@ -9,7 +9,8 @@ import frc.robot.Constants;
 public class TurretIOSim implements TurretIO {
   private final SingleJointedArmSim sim = new SingleJointedArmSim(
       DCMotor.getKrakenX60(1), Constants.Turret.MOTOR_GEAR_RATIO,
-      Constants.Turret.MOMENT_OF_INERTIA_KG_METERS_SQUARED, Constants.Turret.LENGTH_METERS,
+      Constants.Turret.MOMENT_OF_INERTIA_KG_METERS_SQUARED,
+      Constants.Turret.RING_RADIUS_METERS,
       Units.degreesToRadians(Constants.Turret.LOWER_SOFT_LIMIT_DEGREES),
       Units.degreesToRadians(Constants.Turret.UPPER_SOFT_LIMIT_DEGREES), false, 0.0);
   private double appliedVolts;

@@ -1,5 +1,9 @@
 package frc.robot.subsystems.stateSpaceSuperstructure.turret;
 
+import static edu.wpi.first.units.Units.Second;
+import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.Volts;
+
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.LinearQuadraticRegulator;
@@ -14,6 +18,7 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import org.littletonrobotics.junction.Logger;
 
@@ -22,12 +27,10 @@ import org.littletonrobotics.junction.Logger;
  * treating [position, velocity] as one state and accepting a position/velocity setpoint.
  */
 public class TurretSubsystem extends SubsystemBase {
-  private enum ControlMode { PRESET, MANUAL, TARGET_TRACKING }
+  private enum ControlMode { PRESET, MANUAL, TARGET_TRACKING, SYSID }
   private final TurretIO io;
   private final TurretIO.Inputs inputs = new TurretIO.Inputs();
-  private final LinearSystem<N2, N1, N2> plant = LinearSystemId.createSingleJointedArmSystem(
-      DCMotor.getKrakenX60(1), Constants.Turret.MOMENT_OF_INERTIA_KG_METERS_SQUARED,
-      Constants.Turret.MOTOR_GEAR_RATIO);
+  private final LinearSystem<N2, N1, N2> plant = createPlant();
   private final LinearQuadraticRegulator<N2, N1, N2> lqr = new LinearQuadraticRegulator<>(
       plant,
       VecBuilder.fill(Units.degreesToRadians(1.0), Units.degreesToRadians(12.0)),
@@ -37,11 +40,29 @@ public class TurretSubsystem extends SubsystemBase {
   private volatile double goalVelocityRadiansPerSecond;
   private volatile ControlMode controlMode = ControlMode.PRESET;
   private final TurretSimulationWindow simulationWindow;
+  private final SysIdRoutine sysIdRoutine;
+  private boolean sysIdActive;
+  private double sysIdRequestedVolts;
 
   public TurretSubsystem(TurretIO io) {
     this.io = io;
     simulationWindow = RobotBase.isSimulation()
         ? new TurretSimulationWindow(this::selectPreset) : null;
+    sysIdRoutine = new SysIdRoutine(
+        new SysIdRoutine.Config(
+            Volts.of(Constants.Turret.SYSID_RAMP_VOLTS_PER_SECOND).per(Second),
+            Volts.of(Constants.Turret.SYSID_STEP_VOLTS),
+            Seconds.of(Constants.Turret.SYSID_TIMEOUT_SECONDS),
+            state -> Logger.recordOutput(
+                "StateSpaceSuperstructure/Turret/SysIdState", state.toString())),
+        new SysIdRoutine.Mechanism(
+            voltage -> {
+              sysIdRequestedVolts = voltage.in(Volts);
+              io.setVoltage(limitSysIdVoltage(sysIdRequestedVolts));
+            },
+            null,
+            this,
+            "Turret"));
   }
 
   /**
@@ -91,11 +112,17 @@ public class TurretSubsystem extends SubsystemBase {
       simulationWindow.setGoalAngleRadians(goalRadians);
       simulationWindow.setControlMode(controlMode.name());
     }
-    double lqrVolts = lqr.calculate(
-        VecBuilder.fill(inputs.angleRadians, inputs.velocityRadiansPerSecond),
-        VecBuilder.fill(goalRadians, goalVelocityRadiansPerSecond)).get(0, 0);
-    double commandedVolts = MathUtil.clamp(lqrVolts, -RobotController.getBatteryVoltage(),
-        RobotController.getBatteryVoltage());
+    double lqrVolts = 0.0;
+    double commandedVolts;
+    if (sysIdActive) {
+      commandedVolts = limitSysIdVoltage(sysIdRequestedVolts);
+    } else {
+      lqrVolts = lqr.calculate(
+          VecBuilder.fill(inputs.angleRadians, inputs.velocityRadiansPerSecond),
+          VecBuilder.fill(goalRadians, goalVelocityRadiansPerSecond)).get(0, 0);
+      commandedVolts = MathUtil.clamp(lqrVolts, -RobotController.getBatteryVoltage(),
+          RobotController.getBatteryVoltage());
+    }
     io.setVoltage(commandedVolts);
 
     Logger.recordOutput("StateSpaceSuperstructure/Turret/AngleDegrees", Units.radiansToDegrees(inputs.angleRadians));
@@ -105,7 +132,9 @@ public class TurretSubsystem extends SubsystemBase {
     Logger.recordOutput("StateSpaceSuperstructure/Turret/GoalVelocityDegreesPerSecond",
         Units.radiansToDegrees(goalVelocityRadiansPerSecond));
     Logger.recordOutput("StateSpaceSuperstructure/Turret/LQRVolts", lqrVolts);
-    Logger.recordOutput("StateSpaceSuperstructure/Turret/AppliedVolts", commandedVolts);
+    Logger.recordOutput("StateSpaceSuperstructure/Turret/CommandedVolts", commandedVolts);
+    Logger.recordOutput("StateSpaceSuperstructure/Turret/AppliedVolts", inputs.appliedVolts);
+    Logger.recordOutput("StateSpaceSuperstructure/Turret/SysIdActive", sysIdActive);
   }
 
   @Override
@@ -123,6 +152,22 @@ public class TurretSubsystem extends SubsystemBase {
 
   public Command rightCommand() {
     return Commands.runOnce(() -> setFieldAngleDegrees(Constants.Turret.RIGHT_DEGREES), this);
+  }
+
+  /**
+   * Runs all four SysId tests as a deliberately selected autonomous routine. The command stops each
+   * test before the physical software limits and holds position briefly before reversing.
+   */
+  public Command sysIdSequenceCommand() {
+    return Commands.sequence(
+        guardedSysIdCommand(sysIdRoutine.quasistatic(SysIdRoutine.Direction.kForward), true),
+        Commands.waitSeconds(1.0),
+        guardedSysIdCommand(sysIdRoutine.quasistatic(SysIdRoutine.Direction.kReverse), false),
+        Commands.waitSeconds(1.0),
+        guardedSysIdCommand(sysIdRoutine.dynamic(SysIdRoutine.Direction.kForward), true),
+        Commands.waitSeconds(1.0),
+        guardedSysIdCommand(sysIdRoutine.dynamic(SysIdRoutine.Direction.kReverse), false))
+        .withName("Turret complete SysId sequence");
   }
 
   /** Selects one of the keyboard presets: 1 = forward, 2 = left, 3 = right. */
@@ -157,5 +202,54 @@ public class TurretSubsystem extends SubsystemBase {
     }
     return MathUtil.clamp(bestGoal, Constants.Turret.LOWER_SOFT_LIMIT_DEGREES,
         Constants.Turret.UPPER_SOFT_LIMIT_DEGREES);
+  }
+
+  private Command guardedSysIdCommand(Command test, boolean forward) {
+    return Commands.runOnce(() -> {
+          sysIdActive = true;
+          sysIdRequestedVolts = 0.0;
+          controlMode = ControlMode.SYSID;
+        }, this)
+        .andThen(test.until(() -> forward ? atSysIdUpperLimit() : atSysIdLowerLimit()))
+        .finallyDo(() -> {
+          sysIdActive = false;
+          sysIdRequestedVolts = 0.0;
+          io.setVoltage(0.0);
+          goalRadians = inputs.angleRadians;
+          goalVelocityRadiansPerSecond = 0.0;
+          controlMode = ControlMode.PRESET;
+        });
+  }
+
+  private double limitSysIdVoltage(double requestedVolts) {
+    double batteryLimit = RobotController.getBatteryVoltage();
+    double volts = MathUtil.clamp(requestedVolts, -batteryLimit, batteryLimit);
+    if ((volts > 0.0 && atSysIdUpperLimit()) || (volts < 0.0 && atSysIdLowerLimit())) {
+      return 0.0;
+    }
+    return volts;
+  }
+
+  private boolean atSysIdUpperLimit() {
+    return Units.radiansToDegrees(inputs.angleRadians)
+        >= Constants.Turret.UPPER_SOFT_LIMIT_DEGREES
+            - Constants.Turret.SYSID_LIMIT_MARGIN_DEGREES;
+  }
+
+  private boolean atSysIdLowerLimit() {
+    return Units.radiansToDegrees(inputs.angleRadians)
+        <= Constants.Turret.LOWER_SOFT_LIMIT_DEGREES
+            + Constants.Turret.SYSID_LIMIT_MARGIN_DEGREES;
+  }
+
+  private static LinearSystem<N2, N1, N2> createPlant() {
+    double kV = Constants.Turret.CHARACTERIZED_KV_VOLTS_PER_RADIAN_PER_SECOND;
+    double kA = Constants.Turret.CHARACTERIZED_KA_VOLTS_PER_RADIAN_PER_SECOND_SQUARED;
+    if (Double.isFinite(kV) && kV > 0.0 && Double.isFinite(kA) && kA > 0.0) {
+      return LinearSystemId.identifyPositionSystem(kV, kA);
+    }
+    return LinearSystemId.createSingleJointedArmSystem(
+        DCMotor.getKrakenX60(1), Constants.Turret.MOMENT_OF_INERTIA_KG_METERS_SQUARED,
+        Constants.Turret.MOTOR_GEAR_RATIO);
   }
 }

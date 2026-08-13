@@ -40,11 +40,23 @@ public final class Constants {
     public static final double ENCODER_GEAR_RATIO = 127.0 / 168.0;
     public static final double ABSOLUTE_ENCODER_OFFSET_ROTATIONS = 0.377;
 
-    public static final double LENGTH_METERS = 0.30;
-    public static final double MASS_KG = 3.0;
+    // First-pass model: treat the approximately 20 lb turret as a thin ring.
+    public static final double RING_RADIUS_METERS = 0.30;
+    public static final double MASS_KG = Units.lbsToKilograms(20.0);
     public static final double MOMENT_OF_INERTIA_KG_METERS_SQUARED =
-        0.5 * MASS_KG * LENGTH_METERS * LENGTH_METERS;
+        MASS_KG * RING_RADIUS_METERS * RING_RADIUS_METERS;
     public static final double LOOP_PERIOD_SECONDS = 0.020;
+
+    // Replace these with the radians-based kV and kA produced by the turret SysId run. Until both
+    // are positive, the controller falls back to the ring-based plant model above.
+    public static final double CHARACTERIZED_KV_VOLTS_PER_RADIAN_PER_SECOND = Double.NaN;
+    public static final double CHARACTERIZED_KA_VOLTS_PER_RADIAN_PER_SECOND_SQUARED = Double.NaN;
+
+    // Conservative characterization settings for the selectable autonomous SysId sequence.
+    public static final double SYSID_RAMP_VOLTS_PER_SECOND = 0.5;
+    public static final double SYSID_STEP_VOLTS = 4.0;
+    public static final double SYSID_TIMEOUT_SECONDS = 8.0;
+    public static final double SYSID_LIMIT_MARGIN_DEGREES = 20.0;
 
     // These are continuous, unwrapped mechanical angles—not wrapped headings.
     public static final double LOWER_SOFT_LIMIT_DEGREES = -170.0;
