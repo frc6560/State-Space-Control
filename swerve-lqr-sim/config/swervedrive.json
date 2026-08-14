@@ -1,0 +1,42 @@
+{
+  "$schema": "./swervedrive.schema.json",
+  "name": "LQR teaching swerve",
+  "chassis": {
+    "wheelbaseMeters": 0.762,
+    "trackwidthMeters": 0.762,
+    "totalMassKg": 63.5029,
+    "moduleMassKg": 3.85554,
+    "centerDiskRadiusMeters": 0.33
+  },
+  "limits": {
+    "maxSpeedMetersPerSecond": 4.5,
+    "keyboardSpeedMetersPerSecond": 3.2,
+    "keyboardOmegaRadiansPerSecond": 2.5,
+    "maxForceNewtons": 1350,
+    "maxTorqueNewtonMeters": 540,
+    "maxSteerRateRadiansPerSecond": 12.5663706144
+  },
+  "input": {
+    "translationDeadband": 0.08,
+    "rotationDeadband": 0.08,
+    "headingVectorDeadband": 0.25,
+    "headingProportionalGain": 4.5
+  },
+  "plant": {
+    "periodSeconds": 0.02,
+    "linearDragNewtonSecondsPerMeter": 32,
+    "angularDragNewtonMeterSecondsPerRadian": 5.5
+  },
+  "lqr": {
+    "velocityStateCost": 18,
+    "velocityEffortCost": 0.00008,
+    "omegaStateCost": 12,
+    "omegaEffortCost": 0.00012
+  },
+  "modules": [
+    "modules/frontleft.json",
+    "modules/frontright.json",
+    "modules/backleft.json",
+    "modules/backright.json"
+  ]
+}
