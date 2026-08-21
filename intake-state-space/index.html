@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intake state-space control</title>
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <main>
+    <h1>Intake state-space control</h1>
+    <p class="lede">A closed-loop model of the rack-and-pinion intake assigned by Kevin: one X44 for deployment, one X60 for rollers, three normal operating modes, and forward/backward rack oscillation while shooting.</p>
+    <section class="controls" aria-label="Intake mode">
+      <button data-mode="retracted-not-spinning">Retracted · stopped</button>
+      <button data-mode="extended-not-spinning">Extended · stopped</button>
+      <button data-mode="extended-spinning">Extended · intaking</button>
+      <button data-mode="shooting-oscillation">Shooting oscillation</button>
+    </section>
+    <section class="mechanism" aria-label="Intake visualization">
+      <div class="chassis">CHASSIS</div>
+      <div class="rack"><div class="carriage" id="carriage"><div class="rollers stopped" id="rollers"></div></div></div>
+      <div class="status-line">Mode: <strong id="status"></strong></div>
+    </section>
+    <section class="metrics">
+      <div class="metric"><span>Extension</span><strong id="position">0.000 m</strong></div>
+      <div class="metric"><span>Position target</span><strong id="target">0.000 m</strong></div>
+      <div class="metric"><span>Rack velocity</span><strong id="velocity">0.00 m/s</strong></div>
+      <div class="metric"><span>Roller speed</span><strong id="roller">0.0 rps</strong></div>
+      <div class="metric"><span>X44 command</span><strong id="deploy-voltage">0.0 V</strong></div>
+      <div class="metric"><span>X60 command</span><strong id="roller-voltage">0.0 V</strong></div>
+    </section>
+    <p class="note">The model parameters are explicit estimates until the mechanism is characterized. Hard travel limits and ±12 V saturation remain active in every mode.</p>
+  </main>
+  <script type="module" src="./src/app.mjs"></script>
+</body>
+</html>
