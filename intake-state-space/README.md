@@ -12,6 +12,8 @@ npm start
 
 Open <http://localhost:8081>. The simulation has no external packages.
 
+The live telemetry panel records the controller and plant at the same 20 ms loop rate. Download CSV for a portable time-series log (with AdvantageKit-style hierarchical names such as `Intake/State/ExtensionMeters`, `Intake/Reference/RollerSpeedRps`, `Intake/Controller/X60Voltage`, and `Intake/Safety/VoltageLimited`), or JSON for programmatic analysis. The CSV is the interchange artifact to inspect in AdvantageScope or another plotting tool; this browser model cannot emit a native WPILOG file without running inside the WPILib/AdvantageKit robot runtime.
+
 ## Required behavior
 
 The controller exposes these states:

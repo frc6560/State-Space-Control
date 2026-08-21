@@ -1,7 +1,9 @@
 import { IntakeMode, IntakeSimulation } from "./intake.mjs";
+import { IntakeTelemetry } from "./telemetry.mjs";
 
 const config = await fetch("./config/intake.json").then((response) => response.json());
 const simulation = new IntakeSimulation(config);
+const telemetry = new IntakeTelemetry(config);
 const buttons = [...document.querySelectorAll("button[data-mode]")];
 const position = document.querySelector("#position");
 const target = document.querySelector("#target");
@@ -12,6 +14,17 @@ const rollerVoltage = document.querySelector("#roller-voltage");
 const carriage = document.querySelector("#carriage");
 const rollers = document.querySelector("#rollers");
 const status = document.querySelector("#status");
+const sampleCount = document.querySelector("#sample-count");
+const limitFlag = document.querySelector("#limit-flag");
+const downloadCsv = document.querySelector("#download-csv");
+const downloadJson = document.querySelector("#download-json");
+
+function download(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob); link.download = filename; link.click();
+  URL.revokeObjectURL(link.href);
+}
 
 function setMode(mode) {
   simulation.setMode(mode);
@@ -20,6 +33,8 @@ function setMode(mode) {
 }
 
 buttons.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
+downloadCsv.addEventListener("click", () => download(telemetry.toCsv(), "intake-telemetry.csv", "text/csv"));
+downloadJson.addEventListener("click", () => download(telemetry.toJson(), "intake-telemetry.json", "application/json"));
 setMode(IntakeMode.RETRACTED_NOT_SPINNING);
 
 let previousTime = performance.now();
@@ -30,7 +45,11 @@ function animate(now) {
   let sample = simulation.lastOutput;
   while (accumulator >= config.loopPeriodSeconds) {
     sample = simulation.step();
+    const logged = telemetry.record(sample, telemetry.samples.length * config.loopPeriodSeconds);
     accumulator -= config.loopPeriodSeconds;
+    sampleCount.textContent = `${telemetry.samples.length} samples`;
+    limitFlag.textContent = logged["Intake/Safety/VoltageLimited"] ? "LIMIT ACTIVE" : "WITHIN LIMITS";
+    limitFlag.classList.toggle("warning", logged["Intake/Safety/VoltageLimited"]);
   }
   if (sample) {
     const extensionPercent = sample.state[0] / config.mechanism.maximumExtensionMeters * 100;

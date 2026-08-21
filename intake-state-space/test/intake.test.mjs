@@ -7,6 +7,7 @@ import {
   IntakeMode,
   IntakeSimulation,
 } from "../src/intake.mjs";
+import { buildTelemetrySample, IntakeTelemetry, INTAKE_TELEMETRY_FIELDS } from "../src/telemetry.mjs";
 
 const config = JSON.parse(await readFile(new URL("../config/intake.json", import.meta.url)));
 
@@ -83,4 +84,27 @@ test("shooting mode oscillates the rack forward and backward without rollers", (
 test("unknown modes fail safe instead of silently commanding hardware", () => {
   const controller = new IntakeController(config);
   assert.throws(() => controller.setMode("banana"), /Unknown intake mode/);
+});
+
+test("telemetry records state, references, errors, safety, and controller outputs", () => {
+  const simulation = new IntakeSimulation(config);
+  simulation.setMode(IntakeMode.EXTENDED_SPINNING);
+  const sample = simulation.step();
+  const logged = buildTelemetrySample(config, sample, 0.02);
+  assert.equal(logged["Intake/Mode"], IntakeMode.EXTENDED_SPINNING);
+  assert.equal(logged["Intake/Error/ExtensionMeters"], logged["Intake/Reference/ExtensionMeters"] - logged["Intake/State/ExtensionMeters"]);
+  assert.ok("Intake/Controller/X44Voltage" in logged);
+  assert.ok("Intake/Safety/VoltageLimited" in logged);
+});
+
+test("telemetry exports stable CSV and JSON schemas while bounding memory", () => {
+  const telemetry = new IntakeTelemetry(config, 2);
+  const simulation = new IntakeSimulation(config);
+  telemetry.record(simulation.step(), 0);
+  telemetry.record(simulation.step(), 0.02);
+  telemetry.record(simulation.step(), 0.04);
+  assert.equal(telemetry.samples.length, 2);
+  assert.equal(telemetry.toCsv().split("\n")[0], INTAKE_TELEMETRY_FIELDS.join(","));
+  assert.match(telemetry.toJson(), /frc6560-intake-telemetry-v1/);
+  assert.match(telemetry.toJson(), /Intake\/State\/RollerSpeedRps/);
 });

@@ -20,4 +20,11 @@ button:hover, button.active { border-color: #57d6ff; background: #16394e; box-sh
 .metric span { display: block; color: #8da8b8; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
 .metric strong { display: block; margin-top: 7px; font-size: 1.35rem; }
 .note { margin-top: 20px; color: #8da8b8; font-size: .92rem; }
+.telemetry-panel { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-top: 18px; padding: 16px 18px; border: 1px solid #29495d; border-radius: 14px; background: #0b1c28; }
+.telemetry-panel strong, .telemetry-panel small { display: block; margin-top: 5px; }
+.telemetry-label { color: #8da8b8; font-size: .75rem; letter-spacing: .08em; }
+.telemetry-panel small { color: #65e6b2; letter-spacing: .08em; }
+.telemetry-panel small.warning { color: #ffca65; }
+.telemetry-actions { display: flex; gap: 8px; }
+.telemetry-actions button { padding: 9px 12px; }
 @media (max-width: 720px) { .controls, .metrics { grid-template-columns: repeat(2, 1fr); } .chassis { width: 135px; } .rack { left: calc(4% + 100px); } }

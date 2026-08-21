@@ -29,6 +29,17 @@
       <div class="metric"><span>X44 command</span><strong id="deploy-voltage">0.0 V</strong></div>
       <div class="metric"><span>X60 command</span><strong id="roller-voltage">0.0 V</strong></div>
     </section>
+    <section class="telemetry-panel">
+      <div>
+        <span class="telemetry-label">TELEMETRY / ADVANTAGESCOPE-STYLE SIGNALS</span>
+        <strong id="sample-count">0 samples</strong>
+        <small id="limit-flag">WITHIN LIMITS</small>
+      </div>
+      <div class="telemetry-actions">
+        <button id="download-csv" type="button">Download CSV</button>
+        <button id="download-json" type="button">Download JSON</button>
+      </div>
+    </section>
     <p class="note">The model parameters are explicit estimates until the mechanism is characterized. Hard travel limits and ±12 V saturation remain active in every mode.</p>
   </main>
   <script type="module" src="./src/app.mjs"></script>
