@@ -1,4 +1,5 @@
-import { createController, createMatchRecorder, fieldToRobot, inverseKinematics, loadConfiguration, lqrStep, processAnalogInput, simulateModule } from "./physics.mjs";
+import { createController, createMatchRecorder, fieldToRobot, inverseKinematics, loadConfiguration, lqrStep, processAnalogInput, simulateModule } from "./subsystems/swerve/physics.mjs";
+import { readDriverInput } from "./commands/driveCommand.mjs";
 
 const canvas = document.querySelector("#field");
 const ctx = canvas.getContext("2d");
@@ -22,15 +23,7 @@ function resetPose() {
 }
 
 function referenceFromKeys() {
-  const gamepad = [...navigator.getGamepads()].find(Boolean);
-  if (gamepad) return processAnalogInput({
-    translationX: gamepad.axes[0] ?? 0, translationY: -(gamepad.axes[1] ?? 0), omega: gamepad.axes[2] ?? 0
-  }, state.heading, config);
-  return processAnalogInput({
-    translationX: (pressed.has("KeyD") ? 1 : 0) - (pressed.has("KeyA") ? 1 : 0),
-    translationY: (pressed.has("KeyW") ? 1 : 0) - (pressed.has("KeyS") ? 1 : 0),
-    omega: (pressed.has("ArrowLeft") ? 1 : 0) - (pressed.has("ArrowRight") ? 1 : 0)
-  }, state.heading, config);
+  return processAnalogInput(readDriverInput(navigator.getGamepads(), pressed), state.heading, config);
 }
 
 function step() {
@@ -142,7 +135,7 @@ function setKey(event, down) {
 }
 
 async function start() {
-  config = await loadConfiguration(); controller = createController(config); resetPose(); resize();
+  config = await loadConfiguration("./src/main/deploy/swerve"); controller = createController(config); resetPose(); resize();
   const pounds = (kg) => kg * 2.2046226218;
   document.querySelector("#moduleMass").textContent = `4 × ${pounds(config.chassis.moduleMassKg).toFixed(1)} lb`;
   document.querySelector("#centerMass").textContent = `${pounds(controller.model.centerMassKg).toFixed(1)} lb`;

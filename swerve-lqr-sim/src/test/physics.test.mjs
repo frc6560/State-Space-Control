@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyCircularDeadband, characterize, createController, createMatchRecorder, fieldToRobot, inverseKinematics, lqrStep, predictMotorOutput, processAnalogInput, simulateModule, updateSteering, wrapAngle } from "../src/physics.mjs";
-import config from "../config/swervedrive.json" with { type: "json" };
-import frontLeft from "../config/modules/frontleft.json" with { type: "json" };
-import frontRight from "../config/modules/frontright.json" with { type: "json" };
-import backLeft from "../config/modules/backleft.json" with { type: "json" };
-import backRight from "../config/modules/backright.json" with { type: "json" };
+import { applyCircularDeadband, characterize, createController, createMatchRecorder, fieldToRobot, inverseKinematics, lqrStep, predictMotorOutput, processAnalogInput, simulateModule, updateSteering, wrapAngle } from "../main/subsystems/swerve/physics.mjs";
+import config from "../main/deploy/swerve/swervedrive.json" with { type: "json" };
+import frontLeft from "../main/deploy/swerve/modules/frontleft.json" with { type: "json" };
+import frontRight from "../main/deploy/swerve/modules/frontright.json" with { type: "json" };
+import backLeft from "../main/deploy/swerve/modules/backleft.json" with { type: "json" };
+import backRight from "../main/deploy/swerve/modules/backright.json" with { type: "json" };
 
 config.modules = [frontLeft, frontRight, backLeft, backRight];
 

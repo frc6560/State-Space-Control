@@ -89,10 +89,14 @@ All wheel speeds are desaturated together if any exceeds the configured maximum.
 
 ## YAGSL-inspired organization
 
-- `config/swervedrive.json`: chassis, dynamics, input limits, and four module file names
-- `config/modules/*.json`: module name and corner location
-- `src/physics.mjs`: configuration, characterization, LQR, plant, and inverse kinematics
-- `src/app.mjs`: keyboard input, animation loop, and visualization
-- `test/physics.test.mjs`: characterization, LQR, kinematics, desaturation, and steering tests
+- `src/main/deploy/swerve/swervedrive.json`: chassis, dynamics, input limits, and four module file names
+- `src/main/deploy/swerve/modules/*.json`: module name and corner location
+- `src/main/subsystems/swerve/physics.mjs`: configuration, characterization, LQR, plant, kinematics, and motor model
+- `src/main/commands/driveCommand.mjs`: controller/keyboard input command adapter
+- `src/main/io/swerveTelemetry.mjs`: stable AdvantageKit telemetry key names
+- `src/main/app.mjs`: robot entry point and visualization loop
+- `src/test/physics.test.mjs`: characterization, LQR, kinematics, motor, and recording tests
+
+The layout mirrors a conventional FRC project: robot code is under `src/main`, drive behavior is isolated in `subsystems/swerve`, operator bindings live in `commands`, IO names live in `io`, and deploy-time swerve JSON lives under `deploy/swerve`.
 
 The team references use `SwerveParser`, `SwerveSubsystem`, `SwerveInputStream`, field-oriented commands, and `src/main/deploy/swerve/...` JSON. This simulation preserves those conceptual boundaries but intentionally omits CAN devices, odometry sensors, PathPlanner, vision, and autonomous behavior.
