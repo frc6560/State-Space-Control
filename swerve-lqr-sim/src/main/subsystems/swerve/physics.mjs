@@ -1,3 +1,5 @@
+// Shared implementation kept intentionally dependency-free. Public subsystem APIs
+// are exposed through controller/kinematics/moduleSimulation/input/telemetry modules.
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 export function wrapAngle(radians) {

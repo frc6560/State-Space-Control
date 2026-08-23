@@ -91,7 +91,12 @@ All wheel speeds are desaturated together if any exceeds the configured maximum.
 
 - `src/main/deploy/swerve/swervedrive.json`: chassis, dynamics, input limits, and four module file names
 - `src/main/deploy/swerve/modules/*.json`: module name and corner location
-- `src/main/subsystems/swerve/physics.mjs`: configuration, characterization, LQR, plant, kinematics, and motor model
+- `src/main/subsystems/swerve/controller.mjs`: chassis LQR controller
+- `src/main/subsystems/swerve/kinematics.mjs`: frame transforms and module geometry
+- `src/main/subsystems/swerve/moduleSimulation.mjs`: fictional motor/output-stage model
+- `src/main/subsystems/swerve/input.mjs`: deadband and driver reference shaping
+- `src/main/subsystems/swerve/telemetry.mjs`: match recording
+- `src/main/subsystems/swerve/physics.mjs`: small shared math/configuration implementation (kept as a compatibility barrel)
 - `src/main/commands/driveCommand.mjs`: controller/keyboard input command adapter
 - `src/main/io/swerveTelemetry.mjs`: stable AdvantageKit telemetry key names
 - `src/main/app.mjs`: robot entry point and visualization loop

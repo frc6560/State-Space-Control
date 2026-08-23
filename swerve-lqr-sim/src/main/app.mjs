@@ -1,4 +1,9 @@
-import { createController, createMatchRecorder, fieldToRobot, inverseKinematics, loadConfiguration, lqrStep, processAnalogInput, simulateModule } from "./subsystems/swerve/physics.mjs";
+import { createController, lqrStep } from "./subsystems/swerve/controller.mjs";
+import { fieldToRobot, inverseKinematics } from "./subsystems/swerve/kinematics.mjs";
+import { simulateModule } from "./subsystems/swerve/moduleSimulation.mjs";
+import { createMatchRecorder } from "./subsystems/swerve/telemetry.mjs";
+import { processAnalogInput } from "./subsystems/swerve/input.mjs";
+import { loadConfiguration } from "./subsystems/swerve/physics.mjs";
 import { readDriverInput } from "./commands/driveCommand.mjs";
 
 const canvas = document.querySelector("#field");
