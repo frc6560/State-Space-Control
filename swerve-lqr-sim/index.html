@@ -34,7 +34,7 @@
           <div class="rotation-keys">
             <kbd data-key="ArrowLeft">←</kbd><span>ROTATE</span><kbd data-key="ArrowRight">→</kbd>
           </div>
-          <p>Space stops velocity · Click the field to focus</p>
+          <p>Gamepad: left stick translate · right stick rotate</p>
         </section>
 
         <section class="panel telemetry">
@@ -44,6 +44,13 @@
           <div class="readout"><span>ω</span><strong id="omega">0.00</strong><small id="omegaRef">/ 0.00 rad/s</small></div>
           <div class="meter"><i id="effort"></i></div>
           <p>CONTROL EFFORT</p>
+          <table class="module-table"><thead><tr><th>MODULE</th><th>DRIVE</th><th>STEER</th><th>AMPS</th></tr></thead><tbody id="moduleTelemetry"></tbody></table>
+        </section>
+
+        <section class="panel recording">
+          <div class="panel-title"><span>MATCH RECORDING</span><small id="recording">0 samples</small></div>
+          <p>Pose and commanded module voltages are logged every 20 ms.</p>
+          <button id="export" type="button">Export AdvantageKit JSON</button>
         </section>
 
         <section class="panel model">

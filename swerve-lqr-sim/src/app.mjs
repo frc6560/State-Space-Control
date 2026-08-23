@@ -1,4 +1,4 @@
-import { createController, fieldToRobot, inverseKinematics, loadConfiguration, lqrStep, processAnalogInput, updateSteering } from "./physics.mjs";
+import { createController, createMatchRecorder, fieldToRobot, inverseKinematics, loadConfiguration, lqrStep, processAnalogInput, simulateModule } from "./physics.mjs";
 
 const canvas = document.querySelector("#field");
 const ctx = canvas.getContext("2d");
@@ -10,14 +10,22 @@ let state;
 let modules;
 let accumulator = 0;
 let previous = performance.now();
+let matchTime = 0;
+let recorder = createMatchRecorder();
 
 function resetPose() {
   state = { x: field.width / 2, y: field.height / 2, heading: 0, vx: 0, vy: 0, omega: 0,
     effort: { forceX: 0, forceY: 0, torque: 0 } };
-  if (config) modules = config.modules.map((module) => ({ ...module, angle: 0, speed: 0, roll: 0 }));
+  matchTime = 0; recorder.clear();
+  if (config) modules = config.modules.map((module) => ({ ...module, angle: 0, speed: 0, roll: 0,
+    drive: { appliedVoltage: 0, currentAmps: 0 }, steer: { appliedVoltage: 0, currentAmps: 0 } }));
 }
 
 function referenceFromKeys() {
+  const gamepad = [...navigator.getGamepads()].find(Boolean);
+  if (gamepad) return processAnalogInput({
+    translationX: gamepad.axes[0] ?? 0, translationY: -(gamepad.axes[1] ?? 0), omega: gamepad.axes[2] ?? 0
+  }, state.heading, config);
   return processAnalogInput({
     translationX: (pressed.has("KeyD") ? 1 : 0) - (pressed.has("KeyA") ? 1 : 0),
     translationY: (pressed.has("KeyW") ? 1 : 0) - (pressed.has("KeyS") ? 1 : 0),
@@ -37,13 +45,8 @@ function step() {
   const body = fieldToRobot(state.vx, state.vy, state.heading);
   const targets = inverseKinematics({ ...body, omega: state.omega }, config.modules,
     config.limits.maxSpeedMetersPerSecond);
-  modules = modules.map((module, index) => ({
-    ...module,
-    speed: targets[index].speed,
-    angle: updateSteering(module.angle, targets[index].angle,
-      config.limits.maxSteerRateRadiansPerSecond, dt, targets[index].speed),
-    roll: module.roll + targets[index].speed * dt * 7
-  }));
+  modules = modules.map((module, index) => simulateModule(module, targets[index], config));
+  matchTime += dt; recorder.record(matchTime, state, modules);
   updateTelemetry(reference);
 }
 
@@ -56,6 +59,9 @@ function updateTelemetry(reference) {
     Math.abs(state.effort.forceY) / config.limits.maxForceNewtons,
     Math.abs(state.effort.torque) / config.limits.maxTorqueNewtonMeters);
   document.querySelector("#effort").style.width = `${Math.min(100, effort * 100)}%`;
+  document.querySelector("#recording").textContent = `${recorder.samples.length} samples`;
+  document.querySelector("#moduleTelemetry").innerHTML = modules.map((module) =>
+    `<tr><th>${module.name}</th><td>${module.drive.appliedVoltage.toFixed(1)} V</td><td>${module.steer.appliedVoltage.toFixed(1)} V</td><td>${module.drive.currentAmps.toFixed(0)} A</td></tr>`).join("");
 }
 
 function resize() {
@@ -113,6 +119,10 @@ function render() {
   const margin = 42; const scale = Math.min((width - margin * 2) / field.width, (height - margin * 2) / field.height);
   const originX = (width - field.width * scale) / 2; const originY = (height - field.height * scale) / 2;
   drawGrid(width, height, scale, originX, originY); drawRobot(scale, originX, originY);
+  if (recorder.samples.length > 1) {
+    ctx.strokeStyle = "#f6b44a"; ctx.lineWidth = 1.5; ctx.beginPath();
+    recorder.samples.forEach((sample, index) => { const x = originX + sample.pose.x * scale; const y = originY + (field.height - sample.pose.y) * scale; if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke();
+  }
 }
 
 function frame(now) {
@@ -140,6 +150,10 @@ async function start() {
   document.querySelector("#gains").textContent = `${controller.linearGain.toFixed(0)} N·s/m · ${controller.angularGain.toFixed(0)} N·m·s/rad`;
   window.addEventListener("resize", resize); window.addEventListener("keydown", (event) => setKey(event, true)); window.addEventListener("keyup", (event) => setKey(event, false));
   window.addEventListener("blur", () => pressed.clear()); document.querySelector("#reset").addEventListener("click", resetPose); canvas.addEventListener("pointerdown", () => canvas.focus());
+  document.querySelector("#export").addEventListener("click", () => {
+    const blob = new Blob([recorder.toJSON()], { type: "application/json" }); const url = URL.createObjectURL(blob);
+    const link = Object.assign(document.createElement("a"), { href: url, download: "swerve-match.json" }); link.click(); URL.revokeObjectURL(url);
+  });
   requestAnimationFrame(frame);
 }
 

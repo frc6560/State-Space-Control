@@ -27,6 +27,14 @@
     "linearDragNewtonSecondsPerMeter": 32,
     "angularDragNewtonMeterSecondsPerRadian": 5.5
   },
+  "electrical": {
+    "nominalVoltage": 12.0,
+    "driveTimeConstantSeconds": 0.11,
+    "steerTimeConstantSeconds": 0.055,
+    "driveResistanceOhms": 0.09,
+    "steerResistanceOhms": 0.16,
+    "maxSteerRateRadiansPerSecond": 12.5663706144
+  },
   "lqr": {
     "velocityStateCost": 18,
     "velocityEffortCost": 0.00008,

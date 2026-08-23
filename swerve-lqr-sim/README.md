@@ -21,6 +21,8 @@ Controls:
 - `Space`: stop and reset the velocity controller
 - `R`: return the robot to the center
 
+An Xbox-compatible browser controller is also supported: its **left stick** commands field-relative translation and its **right stick X axis** commands rotation. Keyboard controls remain available as a fallback.
+
 The key display shows commanded keys. The velocity cards show the LQR reference and the simulated state. Cyan wheel arrows show the individual module speed and steering direction.
 
 ### Analog/YAGSL-style input path
@@ -29,7 +31,15 @@ The keyboard is only an input adapter: its six driving keys produce normalized v
 
 For heading-vector control, the desired field heading is calculated with `atan2(headingY, headingX)`. For example, a stick held at 35.7° produces a 35.7° chassis heading target with no directional rounding. A proportional heading loop turns that continuous heading error into the yaw-rate reference tracked by the rotational LQR. Circular translation deadband preserves the original analog direction and rescales only its magnitude.
 
-No browser Gamepad API mapping is included yet; adding a controller later only requires mapping its axes into this existing processor.
+The browser Gamepad API maps those axes directly into this input processor.
+
+## Voltage simulation, telemetry, and match recording
+
+Every module has a fictional first-order motor/output stage between its voltage command and its simulated drive/steer output. The stage clamps commands to 12 V, predicts velocity from a configurable time constant, computes back-EMF/current, and only then updates the module state. This keeps simulation control effort distinct from the output that the physical motor would deliver.
+
+The telemetry panel shows total LQR control effort, along with drive voltage, steer voltage, and drive current for each module. The amber field trace is a 20 ms match-pose recording. **Export AdvantageKit JSON** writes every recorded pose and per-module voltage command as a portable log fixture.
+
+See [ADVANTAGEKIT.md](ADVANTAGEKIT.md) for the hardware/AdvantageKit log-key contract.
 
 ## Model assumptions
 

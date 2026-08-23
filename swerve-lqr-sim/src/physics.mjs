@@ -168,6 +168,64 @@ export function updateSteering(currentAngle, targetAngle, maxRate, dt, speed) {
   return wrapAngle(currentAngle + clamp(error, -maxRate * dt, maxRate * dt));
 }
 
+/**
+ * Predict a motor's next output before it is applied to the simulated drivetrain.
+ * This deliberately sits between a voltage command and the plant, mirroring the
+ * measurement/actuation boundary that a real AdvantageKit IO implementation logs.
+ */
+export function predictMotorOutput({ velocity = 0 }, voltage, freeSpeed, timeConstant, resistance, dt, nominalVoltage = 12) {
+  const appliedVoltage = clamp(voltage, -nominalVoltage, nominalVoltage);
+  const targetVelocity = (appliedVoltage / nominalVoltage) * freeSpeed;
+  const nextVelocity = velocity + (targetVelocity - velocity) * (1 - Math.exp(-dt / timeConstant));
+  const backEmfVoltage = freeSpeed === 0 ? 0 : (velocity / freeSpeed) * nominalVoltage;
+  const currentAmps = Math.max(0, Math.abs(appliedVoltage - backEmfVoltage) / resistance);
+  return { appliedVoltage, velocity: nextVelocity, currentAmps, backEmfVoltage };
+}
+
+export function simulateModule(module, target, config) {
+  const dt = config.plant.periodSeconds;
+  const electrical = config.electrical;
+  const speedError = target.speed - (module.driveVelocity ?? 0);
+  const driveVoltage = clamp(
+    (target.speed / config.limits.maxSpeedMetersPerSecond) * electrical.nominalVoltage + speedError * 1.4,
+    -electrical.nominalVoltage, electrical.nominalVoltage
+  );
+  const angleError = wrapAngle(target.angle - module.angle);
+  const steerVoltage = clamp(angleError * 4.2, -electrical.nominalVoltage, electrical.nominalVoltage);
+  const drive = predictMotorOutput(module.drive ?? { velocity: module.driveVelocity ?? 0 }, driveVoltage,
+    config.limits.maxSpeedMetersPerSecond, electrical.driveTimeConstantSeconds,
+    electrical.driveResistanceOhms, dt, electrical.nominalVoltage);
+  const steer = predictMotorOutput(module.steer ?? { velocity: module.steerVelocity ?? 0 }, steerVoltage,
+    electrical.maxSteerRateRadiansPerSecond, electrical.steerTimeConstantSeconds,
+    electrical.steerResistanceOhms, dt, electrical.nominalVoltage);
+  return {
+    ...module,
+    targetSpeed: target.speed,
+    targetAngle: target.angle,
+    speed: drive.velocity,
+    driveVelocity: drive.velocity,
+    steerVelocity: steer.velocity,
+    angle: wrapAngle(module.angle + steer.velocity * dt),
+    drive,
+    steer,
+    roll: (module.roll ?? 0) + drive.velocity * dt * 7
+  };
+}
+
+export function createMatchRecorder() {
+  const samples = [];
+  return {
+    record(timestampSeconds, pose, modules) {
+      samples.push({ timestampSeconds, pose: { x: pose.x, y: pose.y, heading: pose.heading },
+        moduleVoltages: modules.map(({ name, drive, steer }) => ({ name, driveVolts: drive?.appliedVoltage ?? 0,
+          steerVolts: steer?.appliedVoltage ?? 0 })) });
+    },
+    clear() { samples.length = 0; },
+    toJSON() { return JSON.stringify({ format: "advantagekit-swerve-match-v1", samples }, null, 2); },
+    get samples() { return samples; }
+  };
+}
+
 export async function loadConfiguration(baseUrl = "./config") {
   const driveResponse = await fetch(`${baseUrl}/swervedrive.json`);
   if (!driveResponse.ok) throw new Error(`Unable to load swervedrive.json (${driveResponse.status})`);

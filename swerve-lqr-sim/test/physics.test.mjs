@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyCircularDeadband, characterize, createController, fieldToRobot, inverseKinematics, lqrStep, processAnalogInput, updateSteering, wrapAngle } from "../src/physics.mjs";
+import { applyCircularDeadband, characterize, createController, createMatchRecorder, fieldToRobot, inverseKinematics, lqrStep, predictMotorOutput, processAnalogInput, simulateModule, updateSteering, wrapAngle } from "../src/physics.mjs";
 import config from "../config/swervedrive.json" with { type: "json" };
 import frontLeft from "../config/modules/frontleft.json" with { type: "json" };
 import frontRight from "../config/modules/frontright.json" with { type: "json" };
@@ -68,4 +68,27 @@ test("analog deadband retains direction and scales magnitude continuously", () =
   const output = applyCircularDeadband(.35, .7, .08);
   assert.ok(Math.abs(output.y / output.x - 2) < 1e-12);
   assert.ok(Math.hypot(output.x, output.y) > 0 && Math.hypot(output.x, output.y) < 1);
+});
+
+test("voltage prediction is bounded and moves a fictional motor toward commanded speed", () => {
+  const output = predictMotorOutput({ velocity: 0 }, 18, 4.5, .1, .1, .02);
+  assert.equal(output.appliedVoltage, 12);
+  assert.ok(output.velocity > 0 && output.velocity < 4.5);
+  assert.ok(output.currentAmps > 0);
+});
+
+test("module simulation logs independently predicted drive and steering voltages", () => {
+  const module = { ...config.modules[0], angle: 0, drive: { velocity: 0 }, steer: { velocity: 0 } };
+  const output = simulateModule(module, { speed: 2, angle: Math.PI / 2 }, config);
+  assert.ok(output.drive.appliedVoltage > 0);
+  assert.ok(output.steer.appliedVoltage > 0);
+  assert.ok(output.angle > 0 && output.angle < Math.PI / 2);
+});
+
+test("match recorder emits AdvantageKit-shaped pose and voltage samples", () => {
+  const recorder = createMatchRecorder();
+  recorder.record(.02, { x: 1, y: 2, heading: .4 }, [{ name: "front-left", drive: { appliedVoltage: 3 }, steer: { appliedVoltage: -2 } }]);
+  const result = JSON.parse(recorder.toJSON());
+  assert.equal(result.format, "advantagekit-swerve-match-v1");
+  assert.equal(result.samples[0].moduleVoltages[0].driveVolts, 3);
 });

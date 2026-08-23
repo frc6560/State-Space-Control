@@ -18,6 +18,10 @@ h1 span { color:var(--cyan); font-weight:300; }
 .field-label { position:absolute; left:16px; bottom:15px; color:#64706b; font:10px Consolas,monospace; letter-spacing:.12em; text-transform:uppercase; }
 button { position:absolute; right:14px; bottom:12px; border:1px solid #36413d; background:#141d1a; color:#c8d0cd; padding:7px 9px; font:11px Consolas,monospace; cursor:pointer; }
 button:hover { border-color:var(--cyan); color:var(--cyan); }
+.recording button { position:static; width:100%; margin-top:10px; }
+.module-table { width:100%; margin-top:13px; border-collapse:collapse; font:9px Consolas,monospace; color:#b8c4bf; }
+.module-table th,.module-table td { padding:5px 2px; border-top:1px solid #202926; text-align:right; }
+.module-table th:first-child { text-align:left; color:#7c8783; }
 kbd { border:1px solid #3a4742; border-bottom-width:3px; border-radius:3px; background:#17201d; color:#c8d1ce; font:700 15px Consolas,monospace; display:grid; place-items:center; transition:.08s; }
 kbd.active { transform:translateY(2px); border-bottom-width:1px; color:#07100e; background:var(--cyan); box-shadow:0 0 18px #43e7d166; }
 aside { display:flex; flex-direction:column; gap:14px; }
