@@ -12,30 +12,30 @@ Recommended driver-Xbox mapping:
 | B | Extended, roller stopped |
 | Right trigger | Extended and roller spinning |
 | Y | 0.10 m peak-to-peak extension oscillation, roller stopped |
-| Back | Stop outputs immediately |
-
-For the existing button board in ventura-ready, button 3 remains the current roller-intake trigger and button 6 remains the existing intake-reset trigger. The new Xbox mapping is separate so it can be reviewed and added to RobotContainer without changing competition bindings accidentally.
+| Back | Retracted and stopped |
 
 ## Hardware source
 
-Values are from frc6560/Robot-Code-2026, branch ventura-ready:
+The extension-bearing intake implementation in frc6560/Robot-Code-2026 identifies:
 
-- Left intake roller: CAN ID 24, not inverted.
-- Right intake roller: CAN ID 25, inverted.
+- Extension motor: CAN ID 15, integrated TalonFX encoder.
+- Spin motor: CAN ID 16.
 - CAN bus: rio.
-- Existing roller target: 2,500 RPM; this branch caps it at 1,250 RPM.
-- No deployment motor CAN ID or extension sensor is present in that branch.
+- Existing spin target: 2,500 RPM; this branch caps it at 1,250 RPM.
+- The later ventura-ready branch instead exposes roller IDs 24 and 25, so those are not used for this extension implementation.
 
-## Assumptions and safety limits
+## Encoder and soft-limit assumptions
 
-- Maximum extension reference: 0.50 m.
+- Extension position is motor rotations converted through a 64:14 reduction and a 1.751 inch pinion.
+- The encoder must be zeroed while the mechanism is physically fully retracted using zeroExtensionEncoder().
+- Maximum extension reference and forward soft limit: 0.50 m.
+- Reverse soft limit: 0.0 m / 0.0 motor rotations.
+- Runtime control also blocks motion beyond either limit.
 - Oscillation center: 0.45 m.
 - Oscillation amplitude: 0.05 m, giving 0.10 m peak-to-peak travel.
 - Every motor output is bounded to plus/minus 6 V.
-- Deployment feedback is inactive until a real deployment motor and position measurement are connected.
-- The roller adapter uses existing 24/25 motors only.
-- This is integration-ready code, not a claim that the physical intake can extend: the competition branch exposes no extension actuator.
-- Do not deploy until wiring, motor direction, hard stops, sensor zero, and current limits are checked on blocks.
+- No autonomous encoder zeroing is performed because no confirmed retract limit switch was selected for this branch.
+- Verify encoder sign, zero, gear ratio, hard stops, and soft-limit threshold on blocks before enabling motor power.
 
 ## Integration
 
@@ -44,4 +44,8 @@ Place the Java files under the robot project's frc.robot.intake package. Instant
 IntakeStateSpaceSubsystem intake =
     new IntakeStateSpaceSubsystem(new TalonFXRollerIO());
 
-Bind the Xbox controls to intake.setMode(...). The current robot Intake class can remain untouched until the team decides whether this subsystem should replace or wrap it.
+Before enabling the subsystem, physically retract the intake and call:
+
+((TalonFXRollerIO) io).zeroExtensionEncoder();
+
+Bind the Xbox controls with IntakeXboxBindings.configure(controller, intake).
