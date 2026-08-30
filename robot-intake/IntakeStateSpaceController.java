@@ -3,6 +3,7 @@ package frc.robot.intake;
 public final class IntakeStateSpaceController {
   public enum Mode { RETRACTED, EXTENDED, EXTENDED_SPINNING, OSCILLATING }
 
+  public static final double MIN_EXTENSION_METERS = 0.0;
   public static final double MAX_EXTENSION_METERS = 0.50;
   public static final double OSCILLATION_AMPLITUDE_METERS = 0.05;
   public static final double OSCILLATION_CENTER_METERS = 0.45;
@@ -25,7 +26,7 @@ public final class IntakeStateSpaceController {
                           double rollerVelocityRps, double dtSeconds) {
     double xRef, vRef, rollerRef;
     switch (mode) {
-      case RETRACTED: xRef = 0.0; vRef = 0.0; rollerRef = 0.0; break;
+      case RETRACTED: xRef = MIN_EXTENSION_METERS; vRef = 0.0; rollerRef = 0.0; break;
       case EXTENDED: xRef = MAX_EXTENSION_METERS; vRef = 0.0; rollerRef = 0.0; break;
       case EXTENDED_SPINNING:
         xRef = MAX_EXTENSION_METERS; vRef = 0.0; rollerRef = HALF_SPEED_ROLLER_RPS; break;
@@ -39,9 +40,13 @@ public final class IntakeStateSpaceController {
       default: throw new IllegalStateException("Unhandled intake mode");
     }
 
+    xRef = clamp(xRef, MIN_EXTENSION_METERS, MAX_EXTENSION_METERS);
     double deploymentVolts = clamp(
         18.0 * (xRef - extensionMeters) + 2.0 * (vRef - extensionVelocityMetersPerSecond),
         -HALF_SPEED_VOLTAGE_LIMIT, HALF_SPEED_VOLTAGE_LIMIT);
+    if (extensionMeters <= MIN_EXTENSION_METERS && deploymentVolts < 0.0) deploymentVolts = 0.0;
+    if (extensionMeters >= MAX_EXTENSION_METERS && deploymentVolts > 0.0) deploymentVolts = 0.0;
+
     double rollerVolts = clamp(
         0.75 * (rollerRef - rollerVelocityRps),
         -HALF_SPEED_VOLTAGE_LIMIT, HALF_SPEED_VOLTAGE_LIMIT);
