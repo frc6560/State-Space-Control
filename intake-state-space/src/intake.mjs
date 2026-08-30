@@ -223,8 +223,11 @@ export class IntakeSimulation {
   }
 
   step() {
-    this.lastOutput = this.controller.update(this.plant.state);
-    const state = this.plant.update(this.lastOutput.deploymentVoltage, this.lastOutput.rollerVoltage);
-    return { ...this.lastOutput, state };
+    const output = this.controller.update(this.plant.state);
+    const state = this.plant.update(output.deploymentVoltage, output.rollerVoltage);
+    // Keep the cached output in the same shape returned by step(). The browser
+    // animation loop reads lastOutput between fixed-rate physics ticks.
+    this.lastOutput = { ...output, state };
+    return this.lastOutput;
   }
 }

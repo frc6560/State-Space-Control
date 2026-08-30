@@ -97,6 +97,15 @@ test("telemetry records state, references, errors, safety, and controller output
   assert.ok("Intake/Safety/VoltageLimited" in logged);
 });
 
+test("cached simulation output includes state for render frames between ticks", () => {
+  const simulation = new IntakeSimulation(config);
+  simulation.setMode(IntakeMode.EXTENDED_SPINNING);
+  const sample = simulation.step();
+  assert.deepEqual(simulation.lastOutput, sample);
+  assert.equal(simulation.lastOutput.state.length, 3);
+  assert.equal(simulation.lastOutput.reference.length, 3);
+});
+
 test("telemetry exports stable CSV and JSON schemas while bounding memory", () => {
   const telemetry = new IntakeTelemetry(config, 2);
   const simulation = new IntakeSimulation(config);
