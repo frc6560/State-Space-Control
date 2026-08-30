@@ -6,13 +6,14 @@ Branch: agent/intake-command-ready
 
 Recommended driver-Xbox mapping:
 
-| Control | Mode |
+| Control | Behavior |
 |---|---|
-| A | Retracted, roller stopped |
-| B | Extended, roller stopped |
-| Right trigger | Extended and roller spinning |
-| Y | 0.10 m peak-to-peak extension oscillation, roller stopped |
-| Back | Retracted and stopped |
+| Hold B | Extend and spin at half speed |
+| Release B | Remain extended and stop spinning |
+| Press A | Retract completely and stop |
+| Hold right trigger | Oscillate over 0.10 m peak-to-peak |
+| Release right trigger | Return to extended and stop spinning |
+| Back | Additional safe retract |
 
 ## Hardware source
 
@@ -44,8 +45,8 @@ Place the Java files under the robot project's frc.robot.intake package. Instant
 IntakeStateSpaceSubsystem intake =
     new IntakeStateSpaceSubsystem(new TalonFXRollerIO());
 
-Before enabling the subsystem, physically retract the intake and call:
+After physically retracting the intake, call:
 
 ((TalonFXRollerIO) io).zeroExtensionEncoder();
 
-Bind the Xbox controls with IntakeXboxBindings.configure(controller, intake).
+Bind the controls with IntakeXboxBindings.configure(controller, intake).
