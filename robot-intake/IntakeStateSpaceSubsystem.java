@@ -22,11 +22,17 @@ public final class IntakeStateSpaceSubsystem extends SubsystemBase {
   @Override
   public void periodic() {
     lastOutput = controller.calculate(
-        io.getExtensionMeters(), io.getExtensionVelocityMetersPerSecond(),
+        clamp(io.getExtensionMeters(), IntakeStateSpaceController.MIN_EXTENSION_METERS,
+            IntakeStateSpaceController.MAX_EXTENSION_METERS),
+        io.getExtensionVelocityMetersPerSecond(),
         io.getRollerVelocityRps(), 0.02);
     io.setDeploymentVoltage(lastOutput.deploymentVolts());
     io.setRollerVoltage(lastOutput.rollerVolts());
   }
 
   public void stop() { io.stop(); }
+
+  private static double clamp(double value, double minimum, double maximum) {
+    return Math.min(maximum, Math.max(minimum, value));
+  }
 }
