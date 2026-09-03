@@ -1,0 +1,9 @@
+# Gradle and Java build outputs
+.gradle/
+build/
+bin/
+
+# Robot simulation logs and local UI/runtime state
+logs/
+networktables.json
+simgui*.json
