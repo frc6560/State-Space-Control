@@ -1,139 +1,170 @@
 # State-Space Control
 
-This repository contains FRC examples for controlling and coordinating a robot with several moving
-mechanisms. The intended robot has a swerve drivetrain, arm, turret, flywheel, intake, and an
-AprilTag camera. Each mechanism controls its own motion, while a higher-level coordinator starts
-independent actions in parallel and waits for measured stability before continuing.
+This repository describes Team 6560's plan to study state-space control and determine where it can
+improve the accuracy, stability, and coordination of an FRC robot. Our goal is not to replace every
+Proportional-Integral-Derivative (PID) controller with a more complicated method. Instead, we plan
+to model each mechanism, compare model-based control against our existing methods, and use
+state-space control only when the additional information produces a measurable improvement.
 
-The design separates three jobs:
+## Motivation and objective
 
-1. **State estimation** determines where the robot and its mechanisms are now.
-2. **Low-level control** moves each mechanism toward a requested position or velocity.
-3. **Task coordination** decides which mechanisms may move together and when the next stage is safe.
+A complex robot may need to drive, move an arm, rotate a turret, spin a flywheel, and operate an
+intake during the same task. These mechanisms do not always finish at predictable times because
+their response depends on starting position, battery voltage, friction, game-piece load, and motion
+of the rest of the robot. As a result, an autonomous sequence based only on fixed delays can either
+continue before a mechanism is stable or wait longer than necessary.
 
-State-space control handles the physical motion. It does not replace the command scheduler or the
-autonomous state machine.
+We plan to separate this problem into three layers. State estimation will determine the current
+condition of the robot from its sensors. Local controllers will move each mechanism toward a defined
+position or velocity. Finally, a command-based coordinator will run independent motions in parallel
+and continue the sequence only after the necessary states remain within defined tolerances. With
+this structure, state-space control handles the physical behavior of each mechanism, while the
+command scheduler still determines the task that the robot performs.
 
-## Intended operation
+## State-space model
 
-A shooting sequence should work as follows:
+The **state** is the minimum collection of variables required to predict the future behavior of a
+system. For a rotating arm, we can represent the state as
 
-1. The drivetrain begins moving toward the desired field pose.
-2. The arm moves to its shooting angle, the turret aims, and the flywheel spins up simultaneously.
-3. Every subsystem continuously reports whether it is at its goal.
-4. The coordinator checks arm error, turret error, flywheel speed, drivetrain pose, and robot motion.
-5. All conditions must remain valid for 0.15 seconds before `readyToFire()` becomes true.
-6. A feeder may fire only while `readyToFire()` is true.
-7. A timeout prevents a failed mechanism or sensor from blocking an autonomous routine forever.
-
-This uses measured readiness instead of commands such as "wait 1.5 seconds." The same sequence can
-therefore handle different starting positions, battery voltages, loads, and disturbances.
-
-## Control architecture
-
-Each mechanism owns its sensors, model, controller, goal, and safety limits:
-
-| Mechanism | State used by the controller | Requested goal |
-|---|---|---|
-| Arm | angle and angular velocity | arm angle |
-| Turret | continuous angle and angular velocity | safe field-relative angle |
-| Flywheel | angular velocity | shooting speed |
-| Intake extension | position and velocity | extended, retracted, or oscillating |
-| Swerve drivetrain | field pose and chassis velocity | path or target pose |
-
-The arm, turret, and flywheel examples use Linear Quadratic Regulator feedback. LQR chooses motor
-voltage from the difference between the measured state and requested state. The arm also includes
-gravity feedforward. This structure can later use observers when a state cannot be measured reliably.
-
-`SuperstructureCoordinator` does not calculate motor voltage. It sends goals to the subsystems,
-runs independent preparation commands in parallel, and combines their `atGoal()` results with a
-drivetrain-stability condition. This keeps mechanism physics separate from task sequencing.
-
-## AprilTag pose estimation
-
-The intended drivetrain pose estimator combines:
-
-- swerve wheel odometry for short-term translation;
-- a gyro for heading and angular velocity; and
-- timestamped Limelight AprilTag poses for drift correction.
-
-Vision results must be inserted with the timestamp of image capture, not the time the NetworkTables
-packet arrives. `TimestampedVisionMeasurement` represents this input. `VisionMeasurementGate`
-rejects high-ambiguity, distant, fast-rotation, and implausibly discontinuous measurements. It also
-produces distance- and tag-count-dependent uncertainty so weak measurements influence the estimator
-less than strong multi-tag measurements.
-
-The drivetrain should use it as follows after substituting its real estimator:
-
-```java
-if (VisionMeasurementGate.shouldAccept(vision, poseEstimator.getEstimatedPosition(), gyroRate)) {
-  poseEstimator.addVisionMeasurement(
-      vision.pose(),
-      vision.timestampSeconds(),
-      VisionMeasurementGate.standardDeviations(vision));
-}
+```math
+\mathbf{x}=
+\begin{bmatrix}
+\theta \\
+\dot{\theta}
+\end{bmatrix},
 ```
 
-The repository deliberately does not hard-code a Limelight name, robot-to-camera transform, module
-locations, or drivetrain gearing. Those values must be measured on the real robot; invented values
-would produce incorrect localization.
+where $\theta$ is the arm angle in radians and $\dot{\theta}$ is its angular velocity in radians per
+second. The motor voltage is the input $\mathbf{u}$, and the encoder or other sensor readings form
+the measured output $\mathbf{y}$.
 
-## Repository contents
+For software operating at discrete time steps, the system is written as
 
-- `src/main/java/frc/robot/subsystems/stateSpaceSuperstructure` — WPILib arm, turret, and flywheel
-  LQR examples, simulation, hardware IO, and logging.
-- `src/main/java/frc/robot/coordination` — parallel preparation and debounced readiness logic.
-- `src/main/java/frc/robot/vision` — timestamped vision data and AprilTag measurement validation.
-- `swerve-lqr-sim` — interactive browser simulation of a square FRC swerve chassis.
-- `intake-state-space` — interactive intake-extension state-space simulation.
-- `robot-intake` — command-ready intake reference code and controller behavior.
-
-The browser simulations are separate Node projects. The Java project is the WPILib robot example.
-
-## WPILib simulation controls
-
-Run `./gradlew simulateJava`. On Windows, use `gradlew.bat simulateJava`.
-
-| Control | Action |
-|---|---|
-| A | Arm stowed position |
-| B | Arm intake position |
-| X | Arm score position |
-| Y | Turret forward |
-| Left bumper | Turret left |
-| Right bumper | Turret right |
-| Start | Prepare arm, turret, and flywheel in parallel; then wait for stability |
-
-The arm and turret also open keyboard-controlled simulation windows. AdvantageKit publishes the
-controller states, goals, voltages, and coordinator readiness values for AdvantageScope.
-
-## Browser simulations
-
-For either browser simulator, enter its directory and run:
-
-```text
-npm install
-npm test
-npm start
+```math
+\mathbf{x}_{k+1}=A\mathbf{x}_k+B\mathbf{u}_k
 ```
 
-See `swerve-lqr-sim/README.md` and `intake-state-space/README.md` for their controls.
+```math
+\mathbf{y}_k=C\mathbf{x}_k+D\mathbf{u}_k.
+```
 
-## Before deploying to a real robot
+The matrix $A$ describes how the state changes naturally during one control-loop period, while $B$
+describes how the motor voltage changes that state. The matrix $C$ maps the internal state to the
+quantities measured by the sensors, and $D$ represents any immediate effect of the input on the
+measurement. For an FRC robot with a typical 20 ms loop period, the discrete matrices predict the
+state of the mechanism one loop into the future.
 
-This branch is an architecture and simulation reference, not a drop-in season robot program. Before
-deployment:
+This model requires physical information such as motor characteristics, gear ratio, moving mass,
+moment of inertia, and mechanism geometry. We can initially calculate these values from the design,
+but theoretical estimates will not represent friction, mechanical compliance, or changes made
+during construction. Therefore, we plan to characterize the completed mechanism with WPILib SysId
+and replace uncertain estimates with measured system constants before evaluating the controller.
 
-1. Replace estimated masses, inertias, gear ratios, CAN IDs, encoder offsets, and soft limits.
-2. Run SysId on each physical mechanism and update the plant models.
-3. Insert the real drivetrain and its `SwerveDrivePoseEstimator`.
-4. Configure the measured robot-to-camera transform and parse Limelight latency correctly.
-5. Replace the coordinator's temporary `() -> true` drivetrain-stability supplier with checks on
-   pose error, translational speed, and angular speed.
-6. Add collision constraints between the arm, turret, intake, and frame perimeter.
-7. Connect the firing action to a feeder only after verifying `readyToFire()`.
-8. Test every limit at low voltage with the robot supported and an operator ready to disable.
+## State feedback and LQR
 
-The goal is a robot whose mechanisms prepare simultaneously, whose global pose is corrected by
-AprilTags, and whose sequential actions advance because the physical system is actually ready—not
-because a fixed timer expired.
+State feedback calculates motor voltage using both the desired state and the estimated current
+state:
+
+```math
+\mathbf{u}=-K(\hat{\mathbf{x}}-\mathbf{r})+\mathbf{u}_{ff}.
+```
+
+Here, $\hat{\mathbf{x}}$ is the estimated state, $\mathbf{r}$ is the reference state, $K$ is the
+feedback-gain matrix, and $\mathbf{u}_{ff}$ is the feedforward voltage predicted by the model. For
+instance, an arm that is below its target but already moving upward quickly should receive a
+different voltage from an arm at the same angle with zero velocity. State feedback includes this
+difference directly because angle and angular velocity are separate parts of the state.
+
+We plan to calculate $K$ with a Linear Quadratic Regulator (LQR). LQR selects the feedback gains by
+minimizing the cost
+
+```math
+J=\sum_k\left[(\mathbf{x}_k-\mathbf{r}_k)^TQ(\mathbf{x}_k-\mathbf{r}_k)
++\mathbf{u}_k^TR\mathbf{u}_k\right].
+```
+
+The matrix $Q$ penalizes error in selected states, while $R$ penalizes the required actuator effort.
+Increasing the state penalty generally produces a faster and more aggressive response; increasing
+the input penalty generally reduces voltage use and produces a slower response. These matrices do
+not remove the need for testing. Instead, they give us a consistent way to state which errors matter
+and compare the resulting response with the same voltage and safety limits.
+
+## State estimation
+
+Not every state can be measured accurately. Encoder position is usually reliable over a short time,
+but encoder-derived velocity can be noisy, and drivetrain odometry accumulates error as the wheels
+slip. An observer combines the predicted state with the difference between the predicted and actual
+sensor measurements:
+
+```math
+\hat{\mathbf{x}}_{k+1}=A\hat{\mathbf{x}}_k+B\mathbf{u}_k
++L(\mathbf{y}_k-C\hat{\mathbf{x}}_k).
+```
+
+The matrix $L$ determines how strongly the estimate responds to new measurements. A Kalman filter
+calculates this correction from the expected process uncertainty and sensor noise. Based on this
+model, reliable measurements receive more influence than measurements with high uncertainty.
+
+For drivetrain localization, we plan to combine swerve-module odometry and gyro measurements with
+field-position measurements from a Limelight observing AprilTags. Odometry provides frequent and
+smooth short-term updates, while AprilTags correct the position error that accumulates over time.
+The vision measurement must use the timestamp at which the image was captured so that camera
+latency does not apply an old position to the robot's current state. Furthermore, distant,
+high-ambiguity, or physically inconsistent measurements should be rejected or assigned greater
+uncertainty instead of being treated as equally accurate.
+
+## Linear-algebra and control background
+
+To understand and modify these controllers, we need the following mathematical background:
+
+- **Vectors:** representing a collection of states, references, measurements, or actuator inputs.
+- **Matrices:** transforming the current state and input into a predicted future state.
+- **Matrix multiplication:** verifying how the dimensions and units of each model component relate.
+- **Systems of linear equations:** solving for unknown states or model parameters.
+- **Eigenvalues:** evaluating whether the modeled response is stable and how quickly it changes.
+- **Discretization:** converting continuous differential equations into updates at the robot's loop
+  period.
+- **Covariance matrices:** describing the uncertainty and correlation of estimation errors.
+- **Controllability:** determining whether the available actuators can move every required state.
+- **Observability:** determining whether the available sensors can reconstruct every required state.
+
+WPILib can perform much of the matrix calculation, but it cannot determine whether our selected
+state, units, model, or sensor assumptions are physically correct. We therefore need to understand
+what each matrix represents even when a library calculates the final controller or estimator gains.
+
+## Planned implementation
+
+We plan to develop the project in the following stages:
+
+1. Select one simple mechanism and define its states, inputs, measurements, operating range, and
+   safety constraints.
+2. Calculate an initial model from the motor, gearing, mass, inertia, and geometry.
+3. Simulate PID with feedforward and LQR under the same reference motion, voltage limit, and
+   disturbance conditions.
+4. Measure rise time, settling time, overshoot, steady-state error, and voltage use rather than
+   judging the controllers only by appearance.
+5. Characterize the physical mechanism with SysId and update the model with measured constants.
+6. Add an observer when a required state is missing or a direct measurement is too noisy.
+7. Test the controller under battery-voltage changes, additional load, sensor noise, actuator
+   saturation, and reasonable model error.
+8. Apply the same process to coupled or multivariable mechanisms only when the simpler experiment
+   supports the additional complexity.
+9. Coordinate complete robot actions with commands that run independent mechanisms in parallel and
+   wait for measured position, velocity, and stability conditions instead of fixed delays.
+
+Based on these tests, we will retain state-space control only where it produces a useful and
+repeatable improvement. A simple mechanism may still be controlled more effectively with PID and
+feedforward because that solution is easier to tune, diagnose, and repair during a competition.
+
+## Example applications
+
+- An arm or elevator that must control position and velocity while compensating for gravity.
+- A turret that tracks a moving target while remaining inside its mechanical rotation limits.
+- A flywheel that must reach a stable angular velocity before a game piece is released.
+- A swerve drivetrain that follows a trajectory using estimated field position and velocity.
+- A multi-joint mechanism in which the motion of one joint changes the behavior of another.
+
+State-space control is most useful when prediction, state estimation, coupled motion, or multiple
+actuators affect the result. The purpose of this project is to identify those situations, validate
+the models experimentally, and give Team 6560 a repeatable process for implementing model-based
+control when it provides a practical advantage.
