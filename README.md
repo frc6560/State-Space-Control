@@ -1,5 +1,32 @@
 # State-Space Control
 
+## About the team
+
+We are **Team 6560, the Charging Champions**, a student robotics team based in Irvine, California,
+participating in the FIRST Robotics Competition (FRC). Our work brings together mechanical design,
+electronics, and programming to build and operate a competition robot. Software connects these
+parts: it interprets sensor measurements, controls motors, and coordinates the robot's actions.
+
+## Project overview
+
+This project explores how mathematical models and sensor feedback can help our robot move more
+accurately and perform coordinated tasks more reliably. In simple terms, state-space control
+describes what a mechanism is doing now, such as its position and velocity, and uses a model of its
+motion to calculate how the motors should respond. For example, an arm approaching its target
+quickly needs to slow down before it reaches that target.
+
+We want to study these methods in simulation, compare them with our existing controllers, and
+evaluate them on physical mechanisms. The broader goal is to connect the mathematics with practical
+robot software: estimating motion from imperfect measurements, responding to changing conditions,
+and coordinating several mechanisms during a task. The sections below describe our planned
+approach; they are a roadmap, rather than a claim that every capability is already implemented.
+
+The project is also an opportunity for students to learn how physics, mathematics, and computer
+science work together in a real engineering system. We welcome conversations with prospective
+mentors who find the team or project interesting and would like to explore getting involved.
+
+## Technical approach
+
 This repository describes Team 6560's plan to study state-space control and determine where it can
 improve the accuracy, stability, and coordination of an FRC robot. Our goal is not to replace every
 Proportional-Integral-Derivative (PID) controller with a more complicated method. Instead, we plan
