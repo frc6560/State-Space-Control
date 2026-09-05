@@ -22,8 +22,7 @@ and coordinating several mechanisms during a task. The sections below describe o
 approach; they are a roadmap, rather than a claim that every capability is already implemented.
 
 The project is also an opportunity for students to learn how physics, mathematics, and computer
-science work together in a real engineering system. We welcome conversations with prospective
-mentors who find the team or project interesting and would like to explore getting involved.
+science work together in a real engineering system.
 
 ## Technical approach
 
