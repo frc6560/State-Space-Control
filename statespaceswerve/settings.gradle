@@ -1,0 +1,22 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        String frcYear = '2026'
+        File frcHome = FileSystem.getProperty('user.home')
+        File frcFolder = new File(frcHome, 'wpilib' + frcYear)
+        File frcVsCodeFolder = new File(frcFolder, 'vscode')
+        File versionFile = new File(frcVsCodeFolder, 'wpilibVersion.json')
+        if (versionFile.exists()) {
+            def json = new groovy.json.JsonSlurper().parseText(versionFile.text)
+            maven { url = json.mavenUrls.release }
+        }
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { mavenCentral() }
+}
+
+rootProject.name = 'StateSpaceSwerve'
